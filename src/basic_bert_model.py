@@ -391,6 +391,8 @@ if __name__ == '__main__':
     ## load the data
     data = Path('data')
     train = pd.read_csv(data / 'train.csv')
+    #TODO: Remove, we're just doing this to speed things up
+    train = train.iloc[:999]
     test = pd.read_csv(data / 'test.csv')
     submission = pd.read_csv(data / 'sample_submission.csv')
 
@@ -409,7 +411,7 @@ if __name__ == '__main__':
     config = PipeLineConfig(lr=3e-5,
                             warmup=0.05,
                             accum_steps=4,
-                            epochs=10,
+                            epochs=1,
                             seed=42,
                             expname='uncased_1',
                             head_tail=True,
@@ -459,8 +461,7 @@ if __name__ == '__main__':
     print(bcolors.FAIL, f"For Every Fold, Train {epochs} Epochs", bcolors.ENDC)
     if config.train:
         for fold, (train_index, val_index) in enumerate(kf.split(train.values, y_train)):
-            if fold > 0:  ## Saving GPU
-                break
+
             print(bcolors.HEADER, "Current Fold:", fold, bcolors.ENDC)
 
             train_df, val_df = train.iloc[train_index], train.iloc[val_index]
@@ -551,7 +552,7 @@ if __name__ == '__main__':
                     i += 1
 
             model.load_state_dict(best_param_score)
-            result += predict_result(model, test_loader)
+            result += predict_result(model, test_loader, BATCH_SIZE)
             print('best_param_score_{}_{}.pt'.format(config.expname, fold + 1))
             torch.save(best_param_score, 'best_param_score_{}_{}.pt'.format(config.expname, fold + 1))
 
