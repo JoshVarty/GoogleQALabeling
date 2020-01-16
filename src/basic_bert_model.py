@@ -421,8 +421,8 @@ if __name__ == '__main__':
                             fold=3,
                             train=True)
 
-    tokenizer = BertTokenizer.from_pretrained("data/bert-base-uncased-vocab.txt", do_lower_case=True)
-    bert_model_config = 'data/bert-base-uncased/bert_config.json'
+    tokenizer = BertTokenizer.from_pretrained(data/"bert-base-uncased-vocab.txt", do_lower_case=True)
+    bert_model_config = data/'bert-base-uncased/bert_config.json'
     bert_config = BertConfig.from_json_file(bert_model_config)
     bert_config.num_labels = len(target_cols)
 
@@ -492,7 +492,7 @@ if __name__ == '__main__':
             valid_set = QuestDataset(inputs=inputs_valid, lengths=lengths_valid, labels=outputs_valid)
             valid_loader = DataLoader(valid_set, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
 
-            model = CustomBert.from_pretrained('data/bert-base-uncased/', config=bert_config)
+            model = CustomBert.from_pretrained(data/'bert-base-uncased/', config=bert_config)
             model.zero_grad()
             model.to(device)
             torch.cuda.empty_cache()
