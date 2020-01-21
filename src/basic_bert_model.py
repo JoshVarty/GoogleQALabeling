@@ -255,16 +255,6 @@ class CustomBert(BertPreTrainedModel):
 
         outputs = (logits,) + outputs[2:]  # add hidden states and attention if they are here
 
-        if labels is not None:
-            if self.num_labels == 1:
-                #  We are doing regression
-                loss_fct = MSELoss()
-                loss = loss_fct(logits.view(-1), labels.view(-1))
-            else:
-                loss_fct = CrossEntropyLoss()
-                loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
-            outputs = (loss,) + outputs
-
         return outputs  # (loss), logits, (hidden_states), (attentions)
 
 
@@ -392,7 +382,7 @@ if __name__ == '__main__':
     data = Path('data')
     train = pd.read_csv(data / 'train.csv')
     #TODO: Remove, we're just doing this to speed things up
-    train = train.iloc[:999]
+    #train = train.iloc[:999]
     test = pd.read_csv(data / 'test.csv')
     submission = pd.read_csv(data / 'sample_submission.csv')
 
@@ -411,17 +401,17 @@ if __name__ == '__main__':
     config = PipeLineConfig(lr=3e-5,
                             warmup=0.05,
                             accum_steps=4,
-                            epochs=1,
+                            epochs=10,
                             seed=42,
                             expname='uncased_1',
                             head_tail=True,
                             freeze=False,
                             question_weight=0.7,
                             answer_weight=0.3,
-                            fold=3,
+                            fold=5,
                             train=True)
 
-    tokenizer = BertTokenizer.from_pretrained(data/"bert-base-uncased-vocab.txt", do_lower_case=True)
+    tokenizer = BertTokenizer.from_pretrained(str(data/"bert-base-uncased-vocab.txt"), do_lower_case=True)
     bert_model_config = data/'bert-base-uncased/bert_config.json'
     bert_config = BertConfig.from_json_file(bert_model_config)
     bert_config.num_labels = len(target_cols)
@@ -492,7 +482,7 @@ if __name__ == '__main__':
             valid_set = QuestDataset(inputs=inputs_valid, lengths=lengths_valid, labels=outputs_valid)
             valid_loader = DataLoader(valid_set, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
 
-            model = CustomBert.from_pretrained(data/'bert-base-uncased/', config=bert_config)
+            model = CustomBert.from_pretrained(str(data/'bert-base-uncased/'), config=bert_config)
             model.zero_grad()
             model.to(device)
             torch.cuda.empty_cache()
@@ -556,10 +546,19 @@ if __name__ == '__main__':
             print('best_param_score_{}_{}.pt'.format(config.expname, fold + 1))
             torch.save(best_param_score, 'best_param_score_{}_{}.pt'.format(config.expname, fold + 1))
 
-            result /= NUM_FOLDS
+        result /= NUM_FOLDS
 
         del train_df, val_df, model, optimizer, criterion, scheduler
         torch.cuda.empty_cache()
         del valid_loader, train_loader, valid_set, train_set
         torch.cuda.empty_cache()
         gc.collect()
+
+    submission.loc[:, 'question_asker_intent_understanding':] = result
+    # TODO: Should we do this?
+    # submission.loc[~submission['qa_id'].isin(qa_id_list),'question_type_spelling']=0.0
+    # submission.loc[submission['qa_id'].isin(qa_id_list),'question_type_spelling'] = 1.0
+
+    submission.to_csv('training_submission.csv', index=False)
+    submission.head()
+
